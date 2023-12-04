@@ -1,5 +1,10 @@
 const std = @import("std");
 
+const Cache = struct {
+    winning: []u32,
+    our: []u32,
+};
+
 pub fn main() !void {
     std.debug.print("Reading file\n", .{});
     const file = try std.fs.cwd().openFile("inputs/04.txt", .{ .mode = .read_only });
@@ -26,20 +31,33 @@ pub fn main() !void {
         dupe.* = 0;
     }
 
-    //Optimize? HA good one, more like `zig build run-scratchcards -Doptimize=ReleaseFast`
-    //This takes about 5 minutes to run, ideally i'd optimise the extract functions
-    //caching the first result. or even better would to actually do the math so we don't have to process this block
-    //for each duplicate. But i only need the answer once and it's faster for this unoptimised version to run
-    //than it is for my brain to figure out the math. #goodEnough #optimiseLater
+    const cache = try allocator.alloc(?Cache, 198);
+    defer allocator.free(cache);
+    for (cache) |*cached| {
+        cached.* = null;
+    }
+
+    //Ok i'll optimise this loop with a cache of the extract functions.
+    //I'm sure there is some math that can be done to take the results of each iteration
+    //without having to recalculate the duplicates and totals each time.
+    //though for once writing it in zig is an advantage with `zig build run-scratchcards -Doptimize=ReleaseFast`
+    //this program is littered with memory leaks though..
     var total: u32 = 0;
     var i: u32 = 0;
     while (i < lines.len) {
         const line = lines[i];
-        const winning_numbers = try extract_winning_numbers(allocator, line);
-        const our_numbers = try extract_our_numbers(allocator, line);
 
-        defer allocator.free(winning_numbers);
-        defer allocator.free(our_numbers);
+        var winning_numbers: []u32 = undefined;
+        var our_numbers: []u32 = undefined;
+        if (cache[i] == null) {
+            winning_numbers = try extract_winning_numbers(allocator, line);
+            our_numbers = try extract_our_numbers(allocator, line);
+
+            cache[i] = Cache{ .winning = winning_numbers, .our = our_numbers };
+        } else {
+            winning_numbers = cache[i].?.winning;
+            our_numbers = cache[i].?.our;
+        }
 
         var dupes: u32 = 0;
         for (our_numbers) |our_number| {
