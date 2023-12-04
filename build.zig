@@ -17,6 +17,10 @@ pub fn build(b: *std.Build) void {
             .name = "gear-ratios",
             .root_source_file = .{ .path = "src/03-gear-ratios.zig" },
         },
+        .{
+            .name = "scratchcards",
+            .root_source_file = .{ .path = "src/04-scratchcards.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
