@@ -13,6 +13,10 @@ pub fn build(b: *std.Build) void {
             .name = "cube-conundrum",
             .root_source_file = .{ .path = "src/02-cube-conundrum.zig" },
         },
+        .{
+            .name = "gear-ratios",
+            .root_source_file = .{ .path = "src/03-gear-ratios.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
