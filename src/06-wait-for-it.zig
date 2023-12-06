@@ -1,12 +1,5 @@
 const std = @import("std");
 
-const Game = struct {
-    id: u32,
-    red: u32 = 0,
-    green: u32 = 0,
-    blue: u32 = 0,
-};
-
 pub fn main() !void {
     std.debug.print("Reading file\n", .{});
     const file = try std.fs.cwd().openFile("inputs/06.txt", .{ .mode = .read_only });
@@ -18,26 +11,16 @@ pub fn main() !void {
     const input_string = try file.readToEndAlloc(allocator, 1024 * 1000);
     var lines = std.mem.tokenizeAny(u8, input_string, "\n");
 
-    const record_times = try extractNumbers(allocator, lines.next().?);
-    const record_distances = try extractNumbers(allocator, lines.next().?);
+    const record_time = try extractNumber(allocator, lines.next().?);
+    const record_distance = try extractNumber(allocator, lines.next().?);
 
-    var total: u32 = 0;
-    var i: u32 = 0;
-    while (i < record_times.len) : (i += 1) {
-        const wins = calculateWins(record_times[i], record_distances[i]);
+    const wins = calculateWins(record_time, record_distance);
 
-        if (total == 0) {
-            total = wins;
-        } else {
-            total *= wins;
-        }
-    }
-
-    std.debug.print("Total: {}\n", .{total});
+    std.debug.print("Total: {}\n", .{wins});
 }
 
-fn calculateWins(record_time: u32, record_distance: u32) u32 {
-    var wins: u32 = 0;
+fn calculateWins(record_time: u64, record_distance: u64) u64 {
+    var wins: u64 = 0;
     for (0..record_time) |time| {
         const remainder = record_time - time;
         const distance = remainder * time;
@@ -48,14 +31,14 @@ fn calculateWins(record_time: u32, record_distance: u32) u32 {
     return wins;
 }
 
-fn extractNumbers(allocator: std.mem.Allocator, line: []const u8) ![]u32 {
+fn extractNumber(allocator: std.mem.Allocator, line: []const u8) !u64 {
     var number_tokens = std.mem.tokenizeScalar(u8, line, ' ');
     _ = number_tokens.next(); //Discard text
 
-    var numbers = std.ArrayList(u32).init(allocator);
-    while (number_tokens.next()) |token| {
-        const number = try std.fmt.parseInt(u32, token, 10);
-        try numbers.append(number);
-    }
-    return try numbers.toOwnedSlice();
+    const number_text = try std.mem.replaceOwned(u8, allocator, number_tokens.rest(), " ", "");
+    defer allocator.free(number_text);
+
+    std.debug.print("Remaining {s}\n", .{number_text});
+    const number = try std.fmt.parseInt(u64, number_text, 10);
+    return number;
 }
