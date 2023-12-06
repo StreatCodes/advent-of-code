@@ -24,34 +24,28 @@ pub fn main() !void {
     var total: u32 = 0;
     var i: u32 = 0;
     while (i < record_times.len) : (i += 1) {
-        const distances = try calculateDistances(allocator, record_times[i]);
-        std.debug.print("Time: {}, Distance: {}\n", .{ record_times[i], distances[i] });
-
-        var race_wins: u32 = 0;
-        for (distances) |distance| {
-            if (distance > record_distances[i]) {
-                race_wins += 1;
-            }
-        }
+        const wins = calculateWins(record_times[i], record_distances[i]);
 
         if (total == 0) {
-            total = race_wins;
+            total = wins;
         } else {
-            total *= race_wins;
+            total *= wins;
         }
     }
 
     std.debug.print("Total: {}\n", .{total});
 }
 
-fn calculateDistances(allocator: std.mem.Allocator, max_time: u32) ![]u32 {
-    const distances = try allocator.alloc(u32, max_time);
-    for (0..max_time) |time| {
-        const remainder = max_time - time;
+fn calculateWins(record_time: u32, record_distance: u32) u32 {
+    var wins: u32 = 0;
+    for (0..record_time) |time| {
+        const remainder = record_time - time;
         const distance = remainder * time;
-        distances[time] = @intCast(distance);
+        if (distance > record_distance) {
+            wins += 1;
+        }
     }
-    return distances;
+    return wins;
 }
 
 fn extractNumbers(allocator: std.mem.Allocator, line: []const u8) ![]u32 {
