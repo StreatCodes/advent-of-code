@@ -21,6 +21,10 @@ pub fn build(b: *std.Build) void {
             .name = "scratchcards",
             .root_source_file = .{ .path = "src/04-scratchcards.zig" },
         },
+        .{
+            .name = "give-a-seed",
+            .root_source_file = .{ .path = "src/05-give-a-seed.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {

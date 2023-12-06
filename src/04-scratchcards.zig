@@ -27,15 +27,11 @@ pub fn main() !void {
     //Hard coded input line length, easier
     var duplicates = try allocator.alloc(u32, 198);
     defer allocator.free(duplicates);
-    for (duplicates) |*dupe| {
-        dupe.* = 0;
-    }
+    @memset(duplicates, 0);
 
     const cache = try allocator.alloc(?Cache, 198);
     defer allocator.free(cache);
-    for (cache) |*cached| {
-        cached.* = null;
-    }
+    @memset(cache, null);
 
     //Ok i'll optimise this loop with a cache of the extract functions.
     //I'm sure there is some math that can be done to take the results of each iteration
