@@ -29,6 +29,10 @@ pub fn build(b: *std.Build) void {
             .name = "wait-for-it",
             .root_source_file = .{ .path = "src/06-wait-for-it.zig" },
         },
+        .{
+            .name = "camel-cards",
+            .root_source_file = .{ .path = "src/07-camel-cards.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
