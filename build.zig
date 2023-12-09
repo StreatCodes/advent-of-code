@@ -33,6 +33,10 @@ pub fn build(b: *std.Build) void {
             .name = "camel-cards",
             .root_source_file = .{ .path = "src/07-camel-cards.zig" },
         },
+        .{
+            .name = "haunted-wasteland",
+            .root_source_file = .{ .path = "src/08-haunted-wasteland.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
