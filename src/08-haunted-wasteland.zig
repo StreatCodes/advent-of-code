@@ -17,8 +17,8 @@ pub fn main() !void {
     var lines = std.mem.tokenizeAny(u8, input_string, "\n");
 
     const directions = lines.next().?;
-    // _ = lines.next().?; //Discard empty line
 
+    //Create map of paths
     var atlas = std.StringHashMap(Path).init(allocator);
     defer atlas.deinit();
     while (lines.next()) |line| {
@@ -31,53 +31,92 @@ pub fn main() !void {
         };
 
         try atlas.put(id, path);
-        std.debug.print("Paths: {s} - {s} {s}\n", .{ id, path.left, path.right });
     }
 
-    var location_list = std.ArrayList([]const u8).init(allocator);
-    defer location_list.deinit();
-    var iter = atlas.iterator();
-    while (iter.next()) |v| {
-        if (v.key_ptr.*[2] == 'A') {
-            std.debug.print("Starting: {s}\n", .{v.key_ptr.*});
-            try location_list.append(v.key_ptr.*);
+    var atlas_iter = atlas.iterator();
+
+    //Solve each path ending with A
+    var distances_list = std.ArrayList(u64).init(allocator);
+    while (atlas_iter.next()) |entry| {
+        if (entry.key_ptr.*[2] == 'A') {
+            const distance = calcNextLocation(
+                atlas,
+                entry.key_ptr.*,
+                directions,
+            );
+            try distances_list.append(distance);
         }
     }
 
-    const locations = try location_list.toOwnedSlice();
-    defer allocator.free(locations);
+    const distances = try distances_list.toOwnedSlice();
+    defer allocator.free(distances);
+    var total_distances = try allocator.alloc(u64, distances.len);
+    defer allocator.free(total_distances);
+    @memset(total_distances, 0);
 
-    var offset: u64 = 0;
-    var total: u64 = 0;
-    outer: while (true) {
-        if (total % 10_000_000 == 0) {
-            std.debug.print("total: {d}\n", .{total});
+    var count: u64 = 0;
+
+    //Find the lowest common denominator of all distances
+    while (true) {
+        var lowest: u64 = 0;
+        count += 1;
+
+        for (0..total_distances.len) |i| {
+            if (i == 0) {
+                lowest = total_distances[i];
+            } else if (total_distances[i] < lowest) {
+                lowest = total_distances[i];
+            }
         }
-        const direction = directions[offset];
-        for (locations) |*location| {
-            const map = atlas.get(location.*).?;
+        if (count % 100_000_000 == 0) {
+            std.debug.print("lowest: {d}\n", .{lowest});
+        }
 
-            if (direction == 'L') {
-                location.* = map.left;
-            } else {
-                location.* = map.right;
+        var low_count: u32 = 0;
+        for (0..distances.len) |i| {
+            if (lowest != 0 and total_distances[i] == lowest) {
+                low_count += 1;
             }
         }
 
-        offset += 1;
-        if (offset == directions.len) offset = 0;
-        total += 1;
+        if (low_count == distances.len) {
+            break;
+        }
 
-        var count: u32 = 0;
-        for (locations) |location| {
-            if (location[2] == 'Z') {
-                count += 1;
-            }
-
-            if (count == locations.len) {
-                break :outer;
+        for (0..total_distances.len) |i| {
+            if (total_distances[i] == lowest) {
+                total_distances[i] += distances[i];
             }
         }
     }
-    std.debug.print("Total: {}\n", .{total});
+
+    std.debug.print("Total: {d}\n", .{total_distances[0]});
+}
+
+fn calcNextLocation(atlas: std.StringHashMap(Path), current_position: []const u8, directions: []const u8) u64 {
+    var position = current_position;
+    var current_direction: u32 = 0;
+    var distance: u64 = 0;
+
+    while (true) {
+        const map = atlas.get(position).?;
+
+        if (directions[current_direction] == 'L') {
+            position = map.left;
+        } else {
+            position = map.right;
+        }
+        distance += 1;
+
+        current_direction += 1;
+        if (current_direction == directions.len) current_direction = 0;
+
+        if (position[2] == 'Z') {
+            std.debug.print("pos: {s} - {d}\n", .{ position, distance });
+            break;
+        }
+
+        if (std.mem.eql(u8, "XXX", position)) break;
+    }
+    return distance;
 }
