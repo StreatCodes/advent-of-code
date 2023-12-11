@@ -37,6 +37,10 @@ pub fn build(b: *std.Build) void {
             .name = "haunted-wasteland",
             .root_source_file = .{ .path = "src/08-haunted-wasteland.zig" },
         },
+        .{
+            .name = "mirage-maintenance",
+            .root_source_file = .{ .path = "src/09-mirage-maintenance.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
