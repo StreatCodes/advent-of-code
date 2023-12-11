@@ -53,10 +53,37 @@ pub fn main() !void {
     }
 
     const start = findStart(tile_rows.items);
-    //TODO remove this hard coded value and find it with a function
-    const length = findPathLength(tile_rows.items, start, Direction.right);
+    const start_direction = findStartDirection(tile_rows.items, start);
+    const length = findPathLength(tile_rows.items, start, start_direction);
     const middle_point = (length / 2) + (length % 2);
     std.debug.print("Length: {d} - Middle: {d}\n", .{ length, middle_point });
+}
+
+fn findStartDirection(tile_rows: [][]Tile, start: Position) Direction {
+    if (start.x + 1 < tile_rows[0].len) {
+        const tile = tile_rows[start.y][start.x + 1];
+        if (hasDirection(tile, Direction.left)) return Direction.right;
+    }
+    if (start.x > 0) {
+        const tile = tile_rows[start.y][start.x - 1];
+        if (hasDirection(tile, Direction.right)) return Direction.left;
+    }
+    if (start.y + 1 < tile_rows.len) {
+        const tile = tile_rows[start.y + 1][start.x];
+        if (hasDirection(tile, Direction.up)) return Direction.down;
+    }
+    if (start.y > 0) {
+        const tile = tile_rows[start.y - 1][start.x];
+        if (hasDirection(tile, Direction.down)) return Direction.up;
+    }
+
+    unreachable;
+}
+
+fn hasDirection(tile: Tile, direction: Direction) bool {
+    if (tile.pipe.?.a == direction) return true;
+    if (tile.pipe.?.b == direction) return true;
+    return false;
 }
 
 fn tokenToTile(token: u8) Tile {
