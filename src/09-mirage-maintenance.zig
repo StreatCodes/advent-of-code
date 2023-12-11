@@ -31,6 +31,7 @@ fn solveLine(allocator: std.mem.Allocator, line: []const u8) !i64 {
     }
 
     const numbers = try number_list.toOwnedSlice();
+    std.mem.reverse(i64, numbers);
     const next_number = getNextNumber(allocator, numbers);
     return next_number;
 }
