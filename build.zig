@@ -45,6 +45,10 @@ pub fn build(b: *std.Build) void {
             .name = "pipe-maze",
             .root_source_file = .{ .path = "src/10-pipe-maze.zig" },
         },
+        .{
+            .name = "cosmic-expansion",
+            .root_source_file = .{ .path = "src/11-cosmic-expansion.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
