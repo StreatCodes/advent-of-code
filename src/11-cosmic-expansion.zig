@@ -22,10 +22,6 @@ pub fn main() !void {
         try universe.append(line);
     }
 
-    std.debug.print("universe len: {d}x{d}\n", .{ universe.items.len, universe.items[0].len });
-    try expandUniverse(allocator, &universe);
-    std.debug.print("resized universe len: {d}x{d}\n", .{ universe.items.len, universe.items[0].len });
-
     var galaxy_positions = std.ArrayList(Position).init(allocator);
 
     for (universe.items, 0..) |row, y| {
@@ -42,13 +38,7 @@ pub fn main() !void {
             _ = i;
 
             if (pos.x == other_pos.x and pos.y == other_pos.y) continue;
-            const posx: i64 = @intCast(pos.x);
-            const posy: i64 = @intCast(pos.y);
-            const other_posx: i64 = @intCast(other_pos.x);
-            const other_posy: i64 = @intCast(other_pos.y);
-
-            const distance: u64 = @abs(posx - other_posx) + @abs(posy - other_posy);
-            std.debug.print("distance {d}\n", .{distance});
+            const distance = getDistance(universe, pos, other_pos);
             total_distance += distance;
         }
     }
@@ -56,50 +46,34 @@ pub fn main() !void {
     std.debug.print("total distance: {d}\n", .{total_distance / 2});
 }
 
-fn expandUniverse(allocator: std.mem.Allocator, universe: *std.ArrayList([]const u8)) !void {
-    var i: usize = 0;
-    var row_count = universe.items.len;
-    outer: while (i < row_count) : (i += 1) {
-        const line = universe.items[i];
-        for (line) |c| {
-            if (c != '.') continue :outer;
-        }
-        const new_line = try allocator.alloc(u8, line.len);
-        @memset(new_line, '.');
-        row_count += 1;
-        // try universe.resize(row_count);
-        try universe.insert(i, new_line);
-        i += 1;
+fn getDistance(universe: std.ArrayList([]const u8), pos: Position, other_pos: Position) u64 {
+    const posx: u64 = @min(pos.x, other_pos.x);
+    const posy: u64 = @min(pos.y, other_pos.y);
+    var other_posx: u64 = @max(pos.x, other_pos.x);
+    var other_posy: u64 = @max(pos.y, other_pos.y);
+
+    for (posx..other_posx) |x| {
+        if (isExpandedColumn(universe, x)) other_posx += 999_999;
     }
 
-    // allocator.realloc(old_mem: anytype, new_n: usize);
-    var expand_cols = std.ArrayList(usize).init(allocator);
-    defer expand_cols.deinit();
-    outer: for (0..universe.items[0].len) |col| {
-        for (0..universe.items.len) |j| {
-            const c = universe.items[j][col];
-            if (c != '.') continue :outer;
-        }
-        try expand_cols.append(col);
+    for (posy..other_posy) |y| {
+        if (isExpandedRow(universe, y)) other_posy += 999_999;
     }
 
-    i = 0;
-    while (i < universe.items.len) : (i += 1) {
-        universe.items[i] = try shiftRow(allocator, universe.items[i], expand_cols.items);
-    }
+    return @intCast((other_posx - posx) + (other_posy - posy));
 }
 
-fn shiftRow(allocator: std.mem.Allocator, row: []const u8, shift_positions: []usize) ![]const u8 {
-    var new_row = try allocator.alloc(u8, row.len + shift_positions.len);
-    var i: usize = 0;
-    var shift_id: usize = 0;
-    while (i < new_row.len) : (i += 1) {
-        if (shift_id < shift_positions.len and shift_positions[shift_id] + shift_id == i) {
-            new_row[i] = '.';
-            shift_id += 1;
-        } else {
-            new_row[i] = row[i - shift_id];
-        }
+fn isExpandedRow(universe: std.ArrayList([]const u8), row_index: usize) bool {
+    const row = universe.items[row_index];
+    for (row) |c| {
+        if (c != '.') return false;
     }
-    return new_row;
+    return true;
+}
+
+fn isExpandedColumn(universe: std.ArrayList([]const u8), col_index: usize) bool {
+    for (universe.items) |row| {
+        if (row[col_index] != '.') return false;
+    }
+    return true;
 }
