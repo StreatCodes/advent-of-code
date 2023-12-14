@@ -6,7 +6,7 @@ const std = @import("std");
 
 pub fn main() !void {
     std.debug.print("Reading file\n", .{});
-    const file = try std.fs.cwd().openFile("inputs/12.txt", .{ .mode = .read_only });
+    const file = try std.fs.cwd().openFile("inputs/12-example.txt", .{ .mode = .read_only });
     defer file.close();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -19,14 +19,24 @@ pub fn main() !void {
     var total: u64 = 0;
     while (lines.next()) |line| {
         var split_line = std.mem.splitScalar(u8, line, ' ');
-        const springs = split_line.next().?;
+        const partial_springs = split_line.next().?;
+
+        var springs = std.ArrayList(u8).init(allocator);
+        try springs.appendSlice(partial_springs);
+        for (0..4) |_| {
+            try springs.append('?');
+            try springs.appendSlice(partial_springs);
+        }
+
+        std.debug.print("Springs: {s}\n", .{springs.items});
         const instruction_line = split_line.next().?;
         const instructions = try extractInstructions(allocator, instruction_line);
 
-        const variations = try calculateVariations(allocator, springs, instructions);
+        const variations = try calculateVariations(allocator, springs.items, instructions);
         total += variations;
 
         std.debug.print("vartions: {d}\n", .{variations});
+        break;
     }
     std.debug.print("Total: {d}\n", .{total});
 }
@@ -38,6 +48,12 @@ fn extractInstructions(allocator: std.mem.Allocator, instructions: []const u8) !
     while (instruction_tokens.next()) |token| {
         const number = try std.fmt.parseInt(u32, token, 10);
         try results.append(number);
+    }
+    const len = results.items.len;
+    for (0..4) |_| {
+        const duped = try allocator.alloc(u32, len);
+        @memcpy(duped, results.items[0..len]);
+        try results.appendSlice(duped);
     }
 
     return try results.toOwnedSlice();
