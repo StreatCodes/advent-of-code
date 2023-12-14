@@ -49,6 +49,10 @@ pub fn build(b: *std.Build) void {
             .name = "cosmic-expansion",
             .root_source_file = .{ .path = "src/11-cosmic-expansion.zig" },
         },
+        .{
+            .name = "hot-springs",
+            .root_source_file = .{ .path = "src/12-hot-springs.zig" },
+        },
     };
 
     inline for (challenges) |challenge| {
