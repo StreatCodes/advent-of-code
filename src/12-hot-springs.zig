@@ -20,28 +20,45 @@ pub fn main() !void {
     while (lines.next()) |line| {
         var split_line = std.mem.splitScalar(u8, line, ' ');
         const partial_springs = split_line.next().?;
+        const instruction_line = split_line.next().?;
+        std.debug.print("Springs: {s} - {s}\n", .{ partial_springs, instruction_line });
 
-        var springs = std.ArrayList(u8).init(allocator);
-        try springs.appendSlice(partial_springs);
-        for (0..4) |_| {
-            try springs.append('?');
+        var starter_variation: u64 = 0;
+        for (0..2) |dupes| {
+            var springs = std.ArrayList(u8).init(allocator);
+            defer springs.deinit();
             try springs.appendSlice(partial_springs);
+            for (0..dupes) |_| {
+                try springs.append('?');
+                try springs.appendSlice(partial_springs);
+            }
+
+            const instructions = try extractInstructions(allocator, instruction_line, dupes);
+            defer allocator.free(instructions);
+
+            const variations = try calculateVariations(allocator, springs.items, instructions);
+
+            if (dupes == 0) {
+                starter_variation = variations;
+                std.debug.print("Starter: {d}\n", .{starter_variation});
+            } else {
+                const multiplier = variations / starter_variation;
+                var multiplied = variations;
+                std.debug.print("Initial: {d}\n", .{multiplied});
+                for (0..3) |_| {
+                    multiplied *= multiplier;
+                    std.debug.print("Multiplied: {d}\n", .{multiplied});
+                }
+                total += multiplied;
+            }
         }
 
-        std.debug.print("Springs: {s}\n", .{springs.items});
-        const instruction_line = split_line.next().?;
-        const instructions = try extractInstructions(allocator, instruction_line);
-
-        const variations = try calculateVariations(allocator, springs.items, instructions);
-        total += variations;
-
-        std.debug.print("vartions: {d}\n", .{variations});
-        break;
+        // std.debug.print("vartions: {d}\n", .{variations});
     }
     std.debug.print("Total: {d}\n", .{total});
 }
 
-fn extractInstructions(allocator: std.mem.Allocator, instructions: []const u8) ![]u32 {
+fn extractInstructions(allocator: std.mem.Allocator, instructions: []const u8, dupes: usize) ![]u32 {
     var results = std.ArrayList(u32).init(allocator);
     var instruction_tokens = std.mem.splitScalar(u8, instructions, ',');
 
@@ -50,7 +67,7 @@ fn extractInstructions(allocator: std.mem.Allocator, instructions: []const u8) !
         try results.append(number);
     }
     const len = results.items.len;
-    for (0..4) |_| {
+    for (0..dupes) |_| {
         const duped = try allocator.alloc(u32, len);
         @memcpy(duped, results.items[0..len]);
         try results.appendSlice(duped);
@@ -59,13 +76,11 @@ fn extractInstructions(allocator: std.mem.Allocator, instructions: []const u8) !
     return try results.toOwnedSlice();
 }
 
-fn nthBitSet(value: usize, n: usize) bool {
+inline fn nthBitSet(value: usize, n: usize) bool {
     return 1 == (value >> @intCast(n)) & 1;
 }
 
-//TODO this is wrong doesn't generate # with gaps in between
-fn calculateVariations(allocator: std.mem.Allocator, springs: []const u8, instructions: []u32) !u32 {
-    var variations = std.ArrayList([]const u8).init(allocator);
+fn calculateVariations(allocator: std.mem.Allocator, springs: []const u8, instructions: []u32) !u64 {
     var unknown_indexes = std.ArrayList(usize).init(allocator);
     defer unknown_indexes.deinit();
 
@@ -76,33 +91,37 @@ fn calculateVariations(allocator: std.mem.Allocator, springs: []const u8, instru
     }
 
     const upper = std.math.pow(usize, 2, unknown_indexes.items.len);
-    outer: for (0..upper) |i| {
-        const variation = try allocator.alloc(u8, springs.len);
-        @memcpy(variation, springs);
+    var variation = try allocator.alloc(u8, springs.len);
+    defer allocator.free(variation);
+    @memcpy(variation, springs);
+    std.debug.print("Generating {d} variations\n", .{upper});
+    var total: u64 = 0;
 
+    var total_damaged: u32 = 0;
+    for (instructions) |instruction| {
+        total_damaged += instruction;
+    }
+
+    var not_skipped: u64 = 0;
+    const damage_start = std.mem.count(u8, springs, "#");
+    for (0..upper) |i| {
+        var damaged = damage_start;
         for (unknown_indexes.items, 0..) |index, j| {
             const bit = nthBitSet(i, j);
             variation[index] = if (bit) '#' else '.';
+            if (bit) damaged += 1;
         }
-
-        for (variations.items) |other| {
-            if (std.mem.eql(u8, variation, other)) {
-                allocator.free(variation);
-                continue :outer;
-            }
+        //optimize
+        if (damaged != total_damaged) {
+            continue;
         }
+        not_skipped += 1;
 
-        try variations.append(variation);
-    }
-
-    std.debug.print("Possible spring patterns: {d}\n", .{variations.items.len});
-
-    var total: u32 = 0;
-    for (variations.items) |variation| {
         if (verifyVariation(variation, instructions)) {
             total += 1;
         }
     }
+    std.debug.print("Verified: {d}\n", .{not_skipped});
 
     return total;
 }
@@ -129,13 +148,13 @@ fn verifyVariation(springs: []const u8, instructions: []u32) bool {
                     i = next_match.? + i;
                     while (i < springs.len) : (i += 1) {
                         if (springs[i] != '.') {
-                            std.debug.print("NOT Matched: {s} - {any}\n", .{ springs, instructions });
+                            // std.debug.print("NOT Matched: {s} - {any}\n", .{ springs, instructions });
                             return false;
                         }
                     }
                 }
 
-                std.debug.print("Matched: {s} - {any}\n", .{ springs, instructions });
+                // std.debug.print("Matched: {s} - {any}\n", .{ springs, instructions });
                 return true;
             }
         }
@@ -151,8 +170,6 @@ fn verifyVariation(springs: []const u8, instructions: []u32) bool {
 }
 
 fn sliceMatches(springs: []const u8, match: u8, count: u32) bool {
-    const undamaged = std.mem.count(u8, springs, ".");
-    _ = undamaged;
     const damaged = std.mem.count(u8, springs, "#");
 
     switch (match) {
